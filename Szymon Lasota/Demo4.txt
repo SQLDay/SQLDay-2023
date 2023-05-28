@@ -1,0 +1,27 @@
+API Managment - external APIs
+deploy API Managment
+
+Prepare external API for Azure Maps (deploy as well)
+https://atlas.microsoft.com/geocode?api-version=2022-02-01-preview&subscription-key=G80hSgWc1Voo9zz4_fvgAd_qBvPM1Xg220ypPaLjias&query={warsaw,PL}
+
+Create Get Endpoint for it in APIM
+
+-- create database scoped credential
+if exists(select * from sys.database_scoped_credentials where [name] = 'https://szyapi.azure-api.net/demo00/') begin
+    drop database scoped credential [https://szyapi.azure-api.net/demo00/];
+end
+create database scoped credential [https://szyapi.azure-api.net/demo00/]
+with identity = 'HTTPEndpointHeaders', secret = '{"Ocp-Apim-Subscription-Key":"2adcfbe6d5e54233a3e0ccda35ed28c8"}';
+go
+
+declare @ret int, @response nvarchar(max);
+exec @ret = sp_invoke_external_rest_endpoint 
+    @url = N'https://szyapi.azure-api.net/demo00/',
+    @method = 'GET', 
+    @credential = [https://szyapi.azure-api.net/demo00/],
+    @response = @response OUTPUT
+select 
+    @ret as ReturnCode,     
+    json_query(@response, '$.response') as Response,
+    json_query(@response, '$.result') as Result;
+	

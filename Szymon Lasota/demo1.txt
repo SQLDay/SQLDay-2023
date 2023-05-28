@@ -1,0 +1,57 @@
+Demo 1a - basic with anonymous
+
+for Azure Function:
+
+import json
+import logging
+import azure.functions as func
+
+def main(req: func.HttpRequest) -> func.HttpResponse:
+    logging.info('Python HTTP trigger function processed a request.')
+
+    name = {"SQLDay":"2023"}
+    return func.HttpResponse(
+        json.dumps(name),
+        mimetype="application/json",
+    )
+	
+In SQl
+
+DECLARE @ret INT, @response NVARCHAR(MAX);
+
+EXEC @ret = sp_invoke_external_rest_endpoint
+  @url = N'https://demosqldayapp.azurewebsites.net/api/helloSQL',
+  @response = @response OUTPUT;
+
+select 
+    @ret as ReturnCode,     
+    json_query(@response, '$.response') as Response,
+    json_query(@response, '$.result') as Result;
+
+Demo 1b - basic with Auth (managed identity)
+
+Setup Identity on DB
+
+Setup Auth on Function
+
+-- make sure a database master key exists
+if not exists(select * from sys.symmetric_keys where [name] = '##MS_DatabaseMasterKey##') begin
+    create master key encryption by password = 'LONg_Pa$$_w0rd!'
+end
+
+-- create database scoped credential
+create database scoped credential [https://demosqldayapp.azurewebsites.net/api/helloSQL]
+with identity = 'Managed Identity', secret = '{"resourceid":"07ef4429-68c3-4457-9ccb-8cfe7309c608"}';
+go
+
+DECLARE @ret INT, @response NVARCHAR(MAX);
+
+EXEC @ret = sp_invoke_external_rest_endpoint
+  @url = N'https://demosqldayapp.azurewebsites.net/api/helloSQL',
+  @credential = [https://demosqldayapp.azurewebsites.net/api/helloSQL],
+  @response = @response OUTPUT;
+
+select 
+    @ret as ReturnCode,     
+    json_query(@response, '$.response') as Response,
+    json_query(@response, '$.result') as Result;

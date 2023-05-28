@@ -1,0 +1,74 @@
+﻿//Total Unique Orders
+DEFINE
+    MEASURE 'Online Sales Filtered'[Total Orders] =
+        DISTINCTCOUNT ( 'Online Sales Filtered'[SalesOrderNumber] )
+EVALUATE
+CALCULATETABLE (
+    SUMMARIZECOLUMNS (
+        'Online Sales Filtered'[DateKey],
+        "# of orders", [Total Orders]
+    )
+)
+   
+//Total Big Orders BAD
+DEFINE
+    MEASURE 'Online Sales Filtered'[Total Big Orders] =
+        CALCULATE (
+            DISTINCTCOUNT ( 'Online Sales Filtered'[SalesOrderNumber] ),
+            FILTER ( 'Online Sales Filtered', 'Online Sales Filtered'[SalesAmount] > 500 )
+        )
+EVALUATE
+CALCULATETABLE (
+    SUMMARIZECOLUMNS (
+        'Online Sales Filtered'[DateKey],
+        "# of Big Orders", [Total Big Orders]
+    )
+)
+//Total Big Orders GOOD
+DEFINE
+    MEASURE 'Online Sales Filtered'[Total Big Orders] =
+        CALCULATE (
+            DISTINCTCOUNT ( 'Online Sales Filtered'[SalesOrderNumber] ),
+            FILTER(ALL('Online Sales Filtered'[SalesAmount]),'Online Sales Filtered'[SalesAmount] > 500 )
+            )
+        
+EVALUATE
+CALCULATETABLE (
+    SUMMARIZECOLUMNS (
+        'Online Sales Filtered'[DateKey],
+        "# of Big Orders", [Total Big Orders]
+    )
+)
+
+//Total Big Orders GOOD Syntax Sugar
+DEFINE
+    MEASURE 'Online Sales Filtered'[Total Big Orders] =
+        CALCULATE (
+            DISTINCTCOUNT ( 'Online Sales Filtered'[SalesOrderNumber] ),
+            'Online Sales Filtered'[SalesAmount] > 500 )
+            
+        
+EVALUATE
+CALCULATETABLE (
+    SUMMARIZECOLUMNS (
+        'Online Sales Filtered'[DateKey],
+        "# of Big Orders", [Total Big Orders]
+    )
+)
+
+//Total Big Orders GOOD KEEPFILTERS
+DEFINE
+    MEASURE 'Online Sales Filtered'[Total Big Orders] =
+        CALCULATE (
+            DISTINCTCOUNT ( 'Online Sales Filtered'[SalesOrderNumber] ),
+            KEEPFILTERS('Online Sales Filtered'[SalesAmount] > 500 )
+            )
+            
+        
+EVALUATE
+CALCULATETABLE (
+    SUMMARIZECOLUMNS (
+        'Online Sales Filtered'[DateKey],
+        "# of Big Orders", [Total Big Orders]
+    )
+)

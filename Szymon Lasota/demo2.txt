@@ -1,0 +1,69 @@
+Demo 2 power BI get data demo
+0) Intall in PBI sample report of Retail Sales 
+
+1) Show PBI API
+https://learn.microsoft.com/en-us/rest/api/power-bi/datasets/execute-queries#code-try-0
+Use reports DatasetID (get from portal): 60e80374-4a6a-46bc-8935-113f9a2f7fac
+Pre-prepared and formatted sample query: 
+{ "queries": [ { "query": "\r\n DEFINE VAR __DS0Core = \r\n SUMMARIZECOLUMNS(\r\n ROLLUPADDISSUBTOTAL('District'[District], \"IsGrandTotalRowTotal\"),\r\n \"This_Year_Sales\", 'Sales'[This Year Sales]\r\n )\r\n\r\n EVALUATE\r\n __DS0Core\r\n\r\n ORDER BY\r\n [IsGrandTotalRowTotal] DESC, 'District'[District]\r\n " } ], "serializerSettings": { "includeNulls": true } }
+
+1b) copy token for below MS portal (or get by az-cli)
+az login --allow-no-subscriptions
+az account get-access-token --resource "https://analysis.windows.net/powerbi/api" --query "accessToken" -o tsv
+
+2)Prep Scope credential
+
+-- make sure a database master key exists
+if not exists(select * from sys.symmetric_keys where [name] = '##MS_DatabaseMasterKey##') begin
+    create master key encryption by password = 'LONg_Pa$$_w0rd!'
+end
+
+-- create database scoped credential
+if exists(select * from sys.database_scoped_credentials where [name] = 'https://api.powerbi.com/v1.0/myorg/datasets/60e80374-4a6a-46bc-8935-113f9a2f7fac/executeQueries') begin
+    drop database scoped credential [https://api.powerbi.com/v1.0/myorg/datasets/60e80374-4a6a-46bc-8935-113f9a2f7fac/executeQueries];
+end
+create database scoped credential [https://api.powerbi.com/v1.0/myorg/datasets/60e80374-4a6a-46bc-8935-113f9a2f7fac/executeQueries]
+with identity = 'HTTPEndpointHeaders', secret = '{"Authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsIng1dCI6Ii1LSTNROW5OUjdiUm9meG1lWm9YcWJIWkdldyIsImtpZCI6Ii1LSTNROW5OUjdiUm9meG1lWm9YcWJIWkdldyJ9.eyJhdWQiOiJodHRwczovL2FuYWx5c2lzLndpbmRvd3MubmV0L3Bvd2VyYmkvYXBpIiwiaXNzIjoiaHR0cHM6Ly9zdHMud2luZG93cy5uZXQvNDk2YTgzMDktOTRmMy00OGI5LThjMDAtODA1MmNiZTgwYWQxLyIsImlhdCI6MTY4MzU3MjQyOSwibmJmIjoxNjgzNTcyNDI5LCJleHAiOjE2ODM1NzcyODYsImFjY3QiOjEsImFjciI6IjEiLCJhaW8iOiJBWVFBZS84VEFBQUFVV3pLZkRtTi9rbEpnVDlHNWVNSlBVMmRHZUdtbjJqcjJOMHRxZW50b1lTUk1RcTErUEdxdVl6cjBoUmdvMVNaTk9JS1BXbHl6NEkxa0s1TGo3VzQzZzB0VUVaMHYxbFNMVzlGVzAwbmZZc3V5MnFCRkV3dHAyclc1R0dXYzNjNEtNdCs4SldySUY4QWxxSFFlNmdLSHRmR056OXUvSlNKdHpuOWVWSng3UHc9IiwiYWx0c2VjaWQiOiIxOmxpdmUuY29tOjAwMDNCRkZEQUREMzFCOEIiLCJhbXIiOlsicHdkIiwibWZhIl0sImFwcGlkIjoiMThmYmNhMTYtMjIyNC00NWY2LTg1YjAtZjdiZjJiMzliM2YzIiwiYXBwaWRhY3IiOiIwIiwiZW1haWwiOiJhcmNoYWx2QGdtYWlsLmNvbSIsImZhbWlseV9uYW1lIjoiTGFzb3RhIiwiZ2l2ZW5fbmFtZSI6IlN6eW1vbiIsImlkcCI6ImxpdmUuY29tIiwiaXBhZGRyIjoiMTkzLjIzOS41Ny43MSIsIm5hbWUiOiJTenltb24gTGFzb3RhIiwib2lkIjoiNzdjNWFhYWYtMjlmNi00N2Y0LTkyNjItMzAxZWVmMWRjNTlkIiwicHVpZCI6IjEwMDMyMDAxRUE2OTYzNkIiLCJyaCI6IjAuQVlFQUNZTnFTZk9VdVVpTUFJQlN5LWdLMFFrQUFBQUFBQUFBd0FBQUFBQUFBQUNCQUlrLiIsInNjcCI6IkFwcC5SZWFkLkFsbCBDYXBhY2l0eS5SZWFkLkFsbCBDYXBhY2l0eS5SZWFkV3JpdGUuQWxsIENvbnRlbnQuQ3JlYXRlIERhc2hib2FyZC5SZWFkLkFsbCBEYXNoYm9hcmQuUmVhZFdyaXRlLkFsbCBEYXRhZmxvdy5SZWFkLkFsbCBEYXRhZmxvdy5SZWFkV3JpdGUuQWxsIERhdGFzZXQuUmVhZC5BbGwgRGF0YXNldC5SZWFkV3JpdGUuQWxsIEdhdGV3YXkuUmVhZC5BbGwgR2F0ZXdheS5SZWFkV3JpdGUuQWxsIFBpcGVsaW5lLkRlcGxveSBQaXBlbGluZS5SZWFkLkFsbCBQaXBlbGluZS5SZWFkV3JpdGUuQWxsIFJlcG9ydC5SZWFkLkFsbCBSZXBvcnQuUmVhZFdyaXRlLkFsbCBTdG9yYWdlQWNjb3VudC5SZWFkLkFsbCBTdG9yYWdlQWNjb3VudC5SZWFkV3JpdGUuQWxsIFRlbmFudC5SZWFkLkFsbCBUZW5hbnQuUmVhZFdyaXRlLkFsbCBVc2VyU3RhdGUuUmVhZFdyaXRlLkFsbCBXb3Jrc3BhY2UuUmVhZC5BbGwgV29ya3NwYWNlLlJlYWRXcml0ZS5BbGwiLCJzaWduaW5fc3RhdGUiOlsia21zaSJdLCJzdWIiOiJjZEFDRHVSbDc1ZTduVkNPdXljeThuTmkxLTdWYXdwWDVMQ0lOUi1XcF9JIiwidGlkIjoiNDk2YTgzMDktOTRmMy00OGI5LThjMDAtODA1MmNiZTgwYWQxIiwidW5pcXVlX25hbWUiOiJsaXZlLmNvbSNhcmNoYWx2QGdtYWlsLmNvbSIsInV0aSI6InEwdVpIcnUzblVpUXFudXlBWnNBQUEiLCJ2ZXIiOiIxLjAiLCJ3aWRzIjpbIjYyZTkwMzk0LTY5ZjUtNDIzNy05MTkwLTAxMjE3NzE0NWUxMCIsIjEzYmQxYzcyLTZmNGEtNGRjZi05ODVmLTE4ZDNiODBmMjA4YSJdfQ.Q5EUbXh8MJUlYwvGMc1RVBUT4oBPcIlWRxBLiFz_RRm9qtqWPoq3KOndRfcwThg7kBaBL9hIYrX-QM47U2DpF5t-UCZw2EAI-YChEu8xGQ5sYK3Y59DwVatjuUPHp6RdLZZLSo3tssR61IEGOaraZ5XuXagHEIjrwYHBLNYKt2sn9cM97pfZF8eSmxikAAMM9yP-Hr9YhK1Cw1PmNFtbs2mhHmiUMNElSWAqE7hnv5bxwEnAhUs88sMMoGWCwE0EUkjnyYPoQG_PPwchGahagB1dU8bIwznPAIQ2a0r5KUlXAf4yeWMjG7A3XgAJxgbT80U88_GjyYB6rlXwSdDaNg"}';
+go
+
+3) Run PBI API
+declare @url nvarchar(4000) = N'https://api.powerbi.com/v1.0/myorg/datasets/60e80374-4a6a-46bc-8935-113f9a2f7fac/executeQueries';
+declare @payload nvarchar(max) = N'{
+  "queries": [
+    {
+      "query": "' + string_escape('
+        DEFINE VAR __DS0Core = 
+        SUMMARIZECOLUMNS(
+            ROLLUPADDISSUBTOTAL(''District''[District], "IsGrandTotalRowTotal"),
+            "This_Year_Sales", ''Sales''[This Year Sales]
+        )
+
+        EVALUATE
+        __DS0Core
+
+        ORDER BY
+        [IsGrandTotalRowTotal] DESC, ''District''[District]
+        ', 'json') + '"
+    }
+  ],
+  "serializerSettings": {
+    "includeNulls": true
+  }
+}'
+
+declare @ret int, @response nvarchar(max);
+
+exec @ret = sys.sp_invoke_external_rest_endpoint 
+	@method = 'POST',
+	@url = @url,
+	@payload = @payload,
+	@credential = [https://api.powerbi.com/v1.0/myorg/datasets/60e80374-4a6a-46bc-8935-113f9a2f7fac/executeQueries],
+	@response = @response output;
+
+select * from openjson(@response,  '$.result.results[0].tables[0].rows') with
+  (
+    "District[District]" nvarchar(100),
+    "[IsGrandTotalRowTotal]" bit,
+    "[This_Year_Sales]" numeric(18,9)
+  )
+

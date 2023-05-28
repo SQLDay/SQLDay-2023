@@ -1,0 +1,65 @@
+Sample fro using Maps endpoint in trigger
+
+--Table
+CREATE TABLE [dbo].[Workorders]
+(
+  [Id] UNIQUEIDENTIFIER NOT NULL PRIMARY KEY,
+  [Summary] NVARCHAR(200) NOT NULL,
+  [Description] NVARCHAR(MAX) NOT NULL,
+  [Location] NVARCHAR(300) NOT NULL,
+  [Latitude] DECIMAL(18,6) NULL,
+  [Longitude] DECIMAL(18,6) NULL
+)
+
+--Trigger
+CREATE TRIGGER NEW_WORKORDER
+ON dbo.Workorders
+AFTER INSERT
+AS
+BEGIN
+
+    DECLARE @PAYLOAD NVARCHAR(MAX)
+    DECLARE @WORKORDER_ID UNIQUEIDENTIFIER
+
+    SELECT @WORKORDER_ID = [Id]
+    FROM inserted WHERE Latitude IS NULL AND Location != ''
+
+    IF @WORKORDER_ID IS NOT NULL
+    BEGIN
+
+        BEGIN TRY
+            DECLARE @URL NVARCHAR(1000) = '$(WorkorderFunctionEndpoint)'
+            DECLARE @response nvarchar(MAX)
+
+            exec sp_invoke_external_rest_endpoint 
+                    @url = N'https://szyapi.azure-api.net/demo00/',
+                    @method = 'GET', 
+                    @credential = [https://szyapi.azure-api.net/demo00/],
+                    @response = @response OUTPUT
+            UPDATE [dbo].[Workorders]
+             SET    Latitude = json_value(@response,  '$.result.features[0].geometry.coordinates[0]'),
+                     Longitude = json_value(@response,  '$.result.features[0].geometry.coordinates[1]') 
+            WHERE Id = @WORKORDER_ID;
+        END TRY
+        BEGIN CATCH
+            UPDATE Workorders
+            SET Latitude = 0
+                , Longitude = 0
+            WHERE Id = @WORKORDER_ID;
+        END CATCH
+    END
+END
+
+--select
+SELECT TOP (1000) [Id]
+    ,[Summary]
+    ,[Description]
+    ,[Location]
+    ,[Latitude]
+    ,[Longitude]
+FROM [dbo].[Workorders]
+
+--insert
+INSERT INTO dbo.Workorders ([id],[Summary], [Description], [Location])
+VALUES (newid(),'New record', 'SQLDay2023', 'Warsaw,PL');
+
